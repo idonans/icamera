@@ -189,8 +189,8 @@ public class CameraPreview extends TextureView implements Closeable {
     private boolean setupCameraParams(Camera camera) {
         try {
             int[] bestSizes = findBestPreviewAndPictureSize(camera, mPictureAspect);
-            if (bestSizes != null) {
-                showToast("相机不支持当前画面比例");
+            if (bestSizes == null) {
+                showToast("相机不支持当前比例");
                 return false;
             }
 
