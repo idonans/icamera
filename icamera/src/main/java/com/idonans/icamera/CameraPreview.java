@@ -178,7 +178,6 @@ public class CameraPreview extends TextureView implements Closeable {
                 mCamera.startPreview();
             } catch (Throwable e) {
                 e.printStackTrace();
-            } finally {
                 IOUtil.closeQuietly(this);
             }
         } else {
