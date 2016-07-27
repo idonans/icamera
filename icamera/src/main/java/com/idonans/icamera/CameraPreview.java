@@ -177,6 +177,7 @@ public class CameraPreview extends TextureView implements Closeable {
                 IOUtil.closeQuietly(this);
             }
         } else {
+            CommonLog.e(TAG + " fail to setup camera params");
             IOUtil.closeQuietly(this);
         }
     }
