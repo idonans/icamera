@@ -42,6 +42,7 @@ public class CameraPreview extends TextureView implements Closeable {
     private Camera mCamera;
     private Camera.CameraInfo mCameraInfo;
     private int mCameraId;
+    private boolean mCameraPreviewing;
 
     public CameraPreview(Context context) {
         super(context);
@@ -84,48 +85,80 @@ public class CameraPreview extends TextureView implements Closeable {
                 return;
             }
 
+            int aspectWidth;
+            int aspectHeight;
+            boolean isLandscape = isLandscape();
+
             switch (mPictureAspect) {
                 case PICTURE_ASPECT_1X1: {
-                    int minSize = Math.min(width, height);
-                    setMeasuredDimension(minSize, minSize);
+                    aspectWidth = 1;
+                    aspectHeight = 1;
                     break;
                 }
                 case PICTURE_ASPECT_4X3: {
-                    if (width * 3 < height * 4) {
-                        // 压缩高度
-                        int measureWidth = width;
-                        int measureHeight = (int) (1f * width * 3 / 4);
-                        setMeasuredDimension(measureWidth, measureHeight);
+                    if (isLandscape) {
+                        aspectWidth = 4;
+                        aspectHeight = 3;
                     } else {
-                        // 压缩宽度
-                        int measureHeight = height;
-                        int measureWidth = (int) (1f * height * 4 / 3);
-                        setMeasuredDimension(measureWidth, measureHeight);
+                        aspectWidth = 3;
+                        aspectHeight = 4;
                     }
                     break;
                 }
                 case PICTURE_ASPECT_16X9: {
-                    if (width * 9 < height * 16) {
-                        // 压缩高度
-                        int measureWidth = width;
-                        int measureHeight = (int) (1f * width * 9 / 16);
-                        setMeasuredDimension(measureWidth, measureHeight);
+                    if (isLandscape) {
+                        aspectWidth = 16;
+                        aspectHeight = 9;
                     } else {
-                        // 压缩宽度
-                        int measureHeight = height;
-                        int measureWidth = (int) (1f * height * 16 / 9);
-                        setMeasuredDimension(measureWidth, measureHeight);
+                        aspectWidth = 9;
+                        aspectHeight = 16;
                     }
                     break;
                 }
                 default: {
+                    aspectWidth = -1;
+                    aspectHeight = -1;
                     super.onMeasure(widthMeasureSpec, heightMeasureSpec);
                     break;
                 }
             }
+
+            if (aspectWidth <= 0 || aspectHeight <= 0) {
+                return;
+            }
+
+            if (width * aspectHeight < height * aspectWidth) {
+                // 压缩高度
+                int measureWidth = width;
+                int measureHeight = (int) (1f * width * aspectHeight / aspectWidth);
+                setMeasuredDimension(measureWidth, measureHeight);
+            } else {
+                // 压缩宽度
+                int measureHeight = height;
+                int measureWidth = (int) (1f * height * aspectWidth / aspectHeight);
+                setMeasuredDimension(measureWidth, measureHeight);
+            }
         } finally {
             CommonLog.d(TAG + " onMeasure measured size " + getMeasuredWidth() + ", " + getMeasuredHeight());
         }
+    }
+
+    /**
+     * 仅适配手机设备
+     */
+    private static boolean isLandscape() {
+        WindowManager windowManager = (WindowManager) AppContext.getContext().getSystemService(Context.WINDOW_SERVICE);
+        int rotation = windowManager.getDefaultDisplay().getRotation();
+
+        return rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270;
+    }
+
+    private void setCameraPreviewing(boolean cameraPreviewing) {
+        mCameraPreviewing = cameraPreviewing;
+    }
+
+    public boolean isCameraPreviewing() {
+        return mCamera != null && mCameraPreviewing;
     }
 
     public void setPictureAspect(int pictureAspect) {
@@ -219,6 +252,8 @@ public class CameraPreview extends TextureView implements Closeable {
         mTextureSizeWidth = width;
         mTextureSizeHeight = height;
 
+        setCameraPreviewing(false);
+
         if (mCamera == null) {
             Object[] cameraInfoAndId = new Object[2];
             mCamera = openCamera(mUseFaceFront, cameraInfoAndId);
@@ -247,6 +282,7 @@ public class CameraPreview extends TextureView implements Closeable {
                 adjustDisplayOrientation();
                 mCamera.setPreviewTexture(surface);
                 mCamera.startPreview();
+                setCameraPreviewing(true);
                 CommonLog.d(TAG + " camera started preview");
             } catch (Throwable e) {
                 e.printStackTrace();
@@ -395,12 +431,54 @@ public class CameraPreview extends TextureView implements Closeable {
     @Override
     public void close() throws IOException {
         CommonLog.d(TAG + " close");
+        setCameraPreviewing(false);
         mTextureSizeWidth = -1;
         mTextureSizeHeight = -1;
         releaseCamera(mCamera);
         mCamera = null;
         mCameraInfo = null;
         mCameraId = -1;
+    }
+
+    private boolean mPictureTaking;
+
+    /**
+     * 拍照，如果当前正在拍照，则会忽略本次请求
+     */
+    public void takePicture(final Camera.PictureCallback callback) {
+        if (!isCameraPreviewing()) {
+            CommonLog.d(TAG + " takePicture ignored, camera not ready(not in previewing status)");
+            return;
+        }
+
+        if (mPictureTaking) {
+            CommonLog.d(TAG + " takePicture ignored, already in picture taking status");
+            return;
+        }
+
+        try {
+            mPictureTaking = true;
+            mCamera.takePicture(null, null, new Camera.PictureCallback() {
+                @Override
+                public void onPictureTaken(byte[] data, Camera camera) {
+                    resumeCameraPreviewAfterTakePicture();
+                    callback.onPictureTaken(data, camera);
+                }
+            });
+        } catch (Throwable e) {
+            e.printStackTrace();
+            resumeCameraPreviewAfterTakePicture();
+        }
+    }
+
+    private void resumeCameraPreviewAfterTakePicture() {
+        try {
+            mCamera.startPreview();
+            setCameraPreviewing(true);
+        } catch (Throwable ex) {
+            ex.printStackTrace();
+        }
+        mPictureTaking = false;
     }
 
     @CheckResult
