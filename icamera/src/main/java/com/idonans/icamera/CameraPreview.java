@@ -4,7 +4,9 @@ import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.support.annotation.CheckResult;
+import android.view.Surface;
 import android.view.TextureView;
+import android.view.WindowManager;
 import android.widget.Toast;
 
 import com.idonans.acommon.AppContext;
@@ -138,6 +140,69 @@ public class CameraPreview extends TextureView implements Closeable {
         }
     }
 
+    public void adjustDisplayOrientation() {
+        if (mCamera == null) {
+            CommonLog.d(TAG + " adjustDisplayOrientation, but camera is null");
+            return;
+        }
+
+        WindowManager windowManager = (WindowManager) AppContext.getContext().getSystemService(Context.WINDOW_SERVICE);
+        int rotation = windowManager.getDefaultDisplay().getRotation();
+        int degrees = 0;
+        switch (rotation) {
+            case Surface.ROTATION_0:
+                degrees = 0;
+                break;
+            case Surface.ROTATION_90:
+                degrees = 90;
+                break;
+            case Surface.ROTATION_180:
+                degrees = 180;
+                break;
+            case Surface.ROTATION_270:
+                degrees = 270;
+                break;
+        }
+
+        Object[] cameraInfoAndId = getCameraInfoAndId(mUseFaceFront);
+        if (cameraInfoAndId == null) {
+            CommonLog.e(TAG + " adjustDisplayOrientation cameraInfoAndId not found, face front: " + mUseFaceFront);
+            return;
+        }
+
+        Camera.CameraInfo info = (Camera.CameraInfo) cameraInfoAndId[0];
+        int result;
+        if (mUseFaceFront) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;
+        } else {
+            result = (info.orientation - degrees + 360) % 360;
+        }
+
+        CommonLog.d(TAG + " adjustDisplayOrientation: " + result);
+        mCamera.setDisplayOrientation(result);
+    }
+
+    private static Object[] getCameraInfoAndId(boolean faceFront) {
+        try {
+            int numberOfCameras = Camera.getNumberOfCameras();
+            Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
+            for (int i = 0; i < numberOfCameras; i++) {
+                Camera.getCameraInfo(i, cameraInfo);
+                if (!faceFront && cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                    CommonLog.d(TAG + " find facing back camera with id " + i);
+                    return new Object[]{cameraInfo, i};
+                } else if (faceFront && cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                    CommonLog.d(TAG + " find facing front camera with id " + i);
+                    return new Object[]{cameraInfo, i};
+                }
+            }
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     private void changeToSize(SurfaceTexture surface, int width, int height) {
         CommonLog.d(TAG + " changeToSize width:" + width + ", height:" + height);
         if (surface == null) {
@@ -174,8 +239,10 @@ public class CameraPreview extends TextureView implements Closeable {
 
         if (setupCameraParams(mCamera)) {
             try {
+                adjustDisplayOrientation();
                 mCamera.setPreviewTexture(surface);
                 mCamera.startPreview();
+                CommonLog.d(TAG + " camera started preview");
             } catch (Throwable e) {
                 e.printStackTrace();
                 IOUtil.closeQuietly(this);
@@ -297,7 +364,7 @@ public class CameraPreview extends TextureView implements Closeable {
         return max;
     }
 
-    private void releaseCamera(Camera camera) {
+    private static void releaseCamera(Camera camera) {
         if (camera != null) {
             CommonLog.d(TAG + " releaseCamera");
             try {
@@ -330,21 +397,18 @@ public class CameraPreview extends TextureView implements Closeable {
     }
 
     @CheckResult
-    private Camera openCamera(boolean faceFront) {
+    private static Camera openCamera(boolean faceFront) {
         CommonLog.d(TAG + " openCamera faceFront: " + faceFront);
         try {
-            int numberOfCameras = Camera.getNumberOfCameras();
-            Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
-            for (int i = 0; i < numberOfCameras; i++) {
-                Camera.getCameraInfo(i, cameraInfo);
-                if (!faceFront && cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
-                    CommonLog.d(TAG + " find facing back camera, try open " + i);
-                    return Camera.open(i);
-                } else if (faceFront && cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-                    CommonLog.d(TAG + " find facing front camera, try open " + i);
-                    return Camera.open(i);
-                }
+            Object[] cameraInfoAndId = getCameraInfoAndId(faceFront);
+            if (cameraInfoAndId == null) {
+                CommonLog.e(TAG + " openCamera cameraInfoAndId not found, face front: " + faceFront);
+                return null;
             }
+
+            int id = (int) cameraInfoAndId[1];
+            CommonLog.d(TAG + " find camera with id " + id + ", face front: " + faceFront);
+            return Camera.open(id);
         } catch (Throwable e) {
             e.printStackTrace();
         }

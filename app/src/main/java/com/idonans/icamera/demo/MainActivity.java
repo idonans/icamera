@@ -29,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         mCameraPreview = new CameraPreview(this);
+        mCameraPreview.setUseFaceFront(false);
         mCameraPreviewPanel.addView(mCameraPreview, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
     }
 
