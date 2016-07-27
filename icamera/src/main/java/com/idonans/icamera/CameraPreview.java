@@ -164,6 +164,12 @@ public class CameraPreview extends TextureView implements Closeable {
                 break;
         }
 
+        StringBuilder builder = new StringBuilder();
+        builder.append(TAG + " window display rotation: " + rotation + ", degrees: " + degrees);
+        builder.append("\nsupport preview sizes " + deepToString(mCamera.getParameters().getSupportedPreviewSizes()));
+        builder.append("\nsupport picture sizes " + deepToString(mCamera.getParameters().getSupportedPictureSizes()));
+        CommonLog.d(builder);
+
         Object[] cameraInfoAndId = getCameraInfoAndId(mUseFaceFront);
         if (cameraInfoAndId == null) {
             CommonLog.e(TAG + " adjustDisplayOrientation cameraInfoAndId not found, face front: " + mUseFaceFront);
@@ -181,6 +187,21 @@ public class CameraPreview extends TextureView implements Closeable {
 
         CommonLog.d(TAG + " adjustDisplayOrientation camera orientation: " + info.orientation + ", window display rotation degrees: " + degrees + ", set camera display orientation to: " + result);
         mCamera.setDisplayOrientation(result);
+    }
+
+    private static String deepToString(List<Camera.Size> sizes) {
+        int size = sizes.size();
+        Object[] arrays = new Object[size];
+        for (int i = 0; i < size; i++) {
+            final Camera.Size s = sizes.get(i);
+            arrays[i] = new Object() {
+                @Override
+                public String toString() {
+                    return "[" + s.width + ", " + s.height + "]";
+                }
+            };
+        }
+        return Arrays.deepToString(arrays);
     }
 
     private static Object[] getCameraInfoAndId(boolean faceFront) {
