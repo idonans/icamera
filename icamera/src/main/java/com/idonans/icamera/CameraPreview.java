@@ -197,6 +197,7 @@ public class CameraPreview extends TextureView implements Closeable {
             Camera.Parameters parameters = camera.getParameters();
             parameters.setPreviewSize(bestSizes[0], bestSizes[1]);
             parameters.setPictureSize(bestSizes[2], bestSizes[3]);
+            return true;
         } catch (Throwable e) {
             e.printStackTrace();
         }
