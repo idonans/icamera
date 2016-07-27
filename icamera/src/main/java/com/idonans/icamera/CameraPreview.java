@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * Created by idonans on 2016/7/26.
- * <p>
+ * <p/>
  * 此类不支持 layout 方式，只能使用代码动态添加，注意在添加之前，应当请求照相机权限，当请求成功时，再使用。
  */
 public class CameraPreview extends TextureView implements Closeable {
@@ -65,52 +65,57 @@ public class CameraPreview extends TextureView implements Closeable {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int width = getDefaultSize(getSuggestedMinimumWidth(), widthMeasureSpec);
-        int height = getDefaultSize(getSuggestedMinimumHeight(), heightMeasureSpec);
+        try {
+            int width = getDefaultSize(getSuggestedMinimumWidth(), widthMeasureSpec);
+            int height = getDefaultSize(getSuggestedMinimumHeight(), heightMeasureSpec);
+            CommonLog.d(TAG + " onMeasure pre width:" + width + ", height:" + height);
 
-        if (width <= 0 || height <= 0) {
-            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-            return;
-        }
-
-        switch (mPictureAspect) {
-            case PICTURE_ASPECT_1X1: {
-                int minSize = Math.min(width, height);
-                setMeasuredDimension(minSize, minSize);
-                break;
-            }
-            case PICTURE_ASPECT_4X3: {
-                if (width * 3 < height * 4) {
-                    // 压缩高度
-                    int measureWidth = width;
-                    int measureHeight = (int) (1f * width * 3 / 4);
-                    setMeasuredDimension(measureWidth, measureHeight);
-                } else {
-                    // 压缩宽度
-                    int measureHeight = height;
-                    int measureWidth = (int) (1f * height * 4 / 3);
-                    setMeasuredDimension(measureWidth, measureHeight);
-                }
-                break;
-            }
-            case PICTURE_ASPECT_16X9: {
-                if (width * 9 < height * 16) {
-                    // 压缩高度
-                    int measureWidth = width;
-                    int measureHeight = (int) (1f * width * 9 / 16);
-                    setMeasuredDimension(measureWidth, measureHeight);
-                } else {
-                    // 压缩宽度
-                    int measureHeight = height;
-                    int measureWidth = (int) (1f * height * 16 / 9);
-                    setMeasuredDimension(measureWidth, measureHeight);
-                }
-                break;
-            }
-            default: {
+            if (width <= 0 || height <= 0) {
                 super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-                break;
+                return;
             }
+
+            switch (mPictureAspect) {
+                case PICTURE_ASPECT_1X1: {
+                    int minSize = Math.min(width, height);
+                    setMeasuredDimension(minSize, minSize);
+                    break;
+                }
+                case PICTURE_ASPECT_4X3: {
+                    if (width * 3 < height * 4) {
+                        // 压缩高度
+                        int measureWidth = width;
+                        int measureHeight = (int) (1f * width * 3 / 4);
+                        setMeasuredDimension(measureWidth, measureHeight);
+                    } else {
+                        // 压缩宽度
+                        int measureHeight = height;
+                        int measureWidth = (int) (1f * height * 4 / 3);
+                        setMeasuredDimension(measureWidth, measureHeight);
+                    }
+                    break;
+                }
+                case PICTURE_ASPECT_16X9: {
+                    if (width * 9 < height * 16) {
+                        // 压缩高度
+                        int measureWidth = width;
+                        int measureHeight = (int) (1f * width * 9 / 16);
+                        setMeasuredDimension(measureWidth, measureHeight);
+                    } else {
+                        // 压缩宽度
+                        int measureHeight = height;
+                        int measureWidth = (int) (1f * height * 16 / 9);
+                        setMeasuredDimension(measureWidth, measureHeight);
+                    }
+                    break;
+                }
+                default: {
+                    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+                    break;
+                }
+            }
+        } finally {
+            CommonLog.d(TAG + " onMeasure measured size " + getMeasuredWidth() + ", " + getMeasuredHeight());
         }
     }
 
@@ -129,6 +134,7 @@ public class CameraPreview extends TextureView implements Closeable {
     }
 
     private void changeToSize(SurfaceTexture surface, int width, int height) {
+        CommonLog.d(TAG + " changeToSize width:" + width + ", height:" + height);
         if (surface == null) {
             CommonLog.e(TAG + " changeToSize SurfaceTexture is null");
             return;
@@ -161,7 +167,7 @@ public class CameraPreview extends TextureView implements Closeable {
             return;
         }
 
-        if (setupCameraParams(mCamera, width, height)) {
+        if (setupCameraParams(mCamera)) {
             try {
                 mCamera.setPreviewTexture(surface);
                 mCamera.startPreview();
@@ -179,7 +185,7 @@ public class CameraPreview extends TextureView implements Closeable {
         Toast.makeText(AppContext.getContext(), message, Toast.LENGTH_SHORT).show();
     }
 
-    private boolean setupCameraParams(Camera camera, int width, int height) {
+    private boolean setupCameraParams(Camera camera) {
         try {
             int[] bestSizes = findBestPreviewAndPictureSize(camera, mPictureAspect);
             if (bestSizes != null) {
@@ -299,14 +305,17 @@ public class CameraPreview extends TextureView implements Closeable {
 
     @CheckResult
     private Camera openCamera(boolean faceFront) {
+        CommonLog.d(TAG + " openCamera faceFront: " + faceFront);
         try {
             int numberOfCameras = Camera.getNumberOfCameras();
             Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
             for (int i = 0; i < numberOfCameras; i++) {
                 Camera.getCameraInfo(i, cameraInfo);
                 if (!faceFront && cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                    CommonLog.d(TAG + " find facing back camera, try open " + i);
                     return Camera.open(i);
                 } else if (faceFront && cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                    CommonLog.d(TAG + " find facing front camera, try open " + i);
                     return Camera.open(i);
                 }
             }
