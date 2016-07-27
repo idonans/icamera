@@ -14,6 +14,7 @@ import com.idonans.acommon.util.IOUtil;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -43,22 +44,26 @@ public class CameraPreview extends TextureView implements Closeable {
         setSurfaceTextureListener(new SurfaceTextureListener() {
             @Override
             public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+                CommonLog.d(TAG + " onSurfaceTextureAvailable width:" + width + ", height:" + height);
                 changeToSize(surface, width, height);
             }
 
             @Override
             public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
+                CommonLog.d(TAG + " onSurfaceTextureSizeChanged width:" + width + ", height:" + height);
                 changeToSize(surface, width, height);
             }
 
             @Override
             public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+                CommonLog.d(TAG + " onSurfaceTextureDestroyed");
                 IOUtil.closeQuietly(CameraPreview.this);
                 return true;
             }
 
             @Override
             public void onSurfaceTextureUpdated(SurfaceTexture surface) {
+                // ignore
             }
         });
     }
@@ -186,12 +191,28 @@ public class CameraPreview extends TextureView implements Closeable {
         Toast.makeText(AppContext.getContext(), message, Toast.LENGTH_SHORT).show();
     }
 
+    private static String getHumanPictureAspect(int pictureAspect) {
+        switch (pictureAspect) {
+            case PICTURE_ASPECT_1X1:
+                return "1x1";
+            case PICTURE_ASPECT_4X3:
+                return "4x3";
+            case PICTURE_ASPECT_16X9:
+                return "16x9";
+            default:
+                return "unknown";
+        }
+    }
+
     private boolean setupCameraParams(Camera camera) {
+        CommonLog.d(TAG + " setupCameraParams picture aspect " + getHumanPictureAspect(mPictureAspect));
         try {
             int[] bestSizes = findBestPreviewAndPictureSize(camera, mPictureAspect);
             if (bestSizes == null) {
                 showToast("相机不支持当前比例");
                 return false;
+            } else {
+                CommonLog.d(TAG + "setupCameraParams find best sizes " + Arrays.toString(bestSizes));
             }
 
             Camera.Parameters parameters = camera.getParameters();
@@ -279,6 +300,7 @@ public class CameraPreview extends TextureView implements Closeable {
 
     private void releaseCamera(Camera camera) {
         if (camera != null) {
+            CommonLog.d(TAG + " releaseCamera");
             try {
                 camera.stopPreview();
             } catch (Throwable e) {
@@ -294,11 +316,14 @@ public class CameraPreview extends TextureView implements Closeable {
             } catch (Throwable e) {
                 // ignore
             }
+        } else {
+            CommonLog.d(TAG + " releaseCamera, but camera is null");
         }
     }
 
     @Override
     public void close() throws IOException {
+        CommonLog.d(TAG + " close");
         mTextureSizeWidth = -1;
         mTextureSizeHeight = -1;
         releaseCamera(mCamera);
