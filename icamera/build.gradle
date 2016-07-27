@@ -1,0 +1,132 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+
+// 使用 git commit 总数作为 version code
+def int getAutoVersionCode() {
+    def cmd = "git rev-list HEAD --count"
+    return cmd.execute().text.trim().toInteger()
+}
+
+// 使用距离最近的标签名 + "." + 距离该标签的 commit 数量 作为版本名称, 通常标签使用如 0.1, 1.0, 1.89等命名方式
+def String getAutoVersionName() {
+    def cmd = "git describe --tags"
+    def tagDesc = cmd.execute().text.trim()
+
+    def pattern = "-(\\d+)-g"
+    def matcher = tagDesc =~ pattern
+
+    def tagName
+    def commitCount
+
+    if (matcher) {
+        tagName = tagDesc.substring(0, matcher.start())
+        commitCount = matcher[0][1]
+    } else {
+        tagName = tagDesc;
+        commitCount = "0";
+    }
+
+    return tagName + "." + commitCount
+}
+
+def autoVersionCode = getAutoVersionCode()
+def autoVersionName = getAutoVersionName()
+version = autoVersionName
+
+android {
+    compileSdkVersion 24
+    buildToolsVersion "24.0.0"
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 24
+        versionCode autoVersionCode
+        versionName autoVersionName
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    testCompile 'junit:junit:4.12'
+    compile "com.idonans.acommon:acommon:0.6.17"
+}
+
+def siteUrl = 'https://github.com/idonans/icamera'
+def gitUrl = 'https://github.com/idonans/icamera.git'
+group = "com.idonans.icamera"
+install {
+    repositories.mavenInstaller {
+        // This generates POM.xml with proper parameters
+        pom {
+            project {
+                packaging 'aar'
+                // Add your description here
+                name 'Android camera lib'
+                url siteUrl
+                // Set your license
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id 'idonans'
+                        name 'idonans'
+                        email 'idonans@126.com'
+                    }
+                }
+                scm {
+                    connection gitUrl
+                    developerConnection gitUrl
+                    url siteUrl
+                }
+            }
+        }
+    }
+}
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.srcDirs
+}
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    options.addStringOption('encoding', 'UTF-8')
+    options.addStringOption('charset', 'UTF-8');
+    failOnError false
+}
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
+
+
+
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+bintray {
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+    configurations = ['archives']
+    pkg {
+        repo = "maven"
+        name = "icamera"
+        websiteUrl = siteUrl
+        vcsUrl = gitUrl
+        licenses = ["Apache-2.0"]
+        publish = true
+    }
+}
