@@ -179,7 +179,7 @@ public class CameraPreview extends TextureView implements Closeable {
             result = (info.orientation - degrees + 360) % 360;
         }
 
-        CommonLog.d(TAG + " adjustDisplayOrientation: " + result);
+        CommonLog.d(TAG + " adjustDisplayOrientation camera orientation: " + info.orientation + ", window display rotation degrees: " + degrees + ", set camera display orientation to: " + result);
         mCamera.setDisplayOrientation(result);
     }
 
