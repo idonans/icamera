@@ -73,6 +73,7 @@ public class CameraPreview extends TextureView implements Closeable {
         public CameraInfos cameraInfos;
 
         public int displayOrientation;
+        public int pictureRotation;
 
         public void requestAutoFocus(Camera camera, Camera.AutoFocusCallback callback) {
             if (canAutoFocus()) {
@@ -97,12 +98,12 @@ public class CameraPreview extends TextureView implements Closeable {
 
             parameters.setPreviewSize(mBestSize.previewSize.width, mBestSize.previewSize.height);
             parameters.setPictureSize(mBestSize.pictureSize.width, mBestSize.pictureSize.height);
-            parameters.setRotation(displayOrientation);
+            parameters.setRotation(pictureRotation);
 
             camera.setDisplayOrientation(displayOrientation);
         }
 
-        private int calculateDisplayOrientation() {
+        private void calculateDisplayOrientationAndRotation() {
             WindowManager windowManager = (WindowManager) AppContext.getContext().getSystemService(Context.WINDOW_SERVICE);
             int rotation = windowManager.getDefaultDisplay().getRotation();
             int degrees = 0;
@@ -121,15 +122,19 @@ public class CameraPreview extends TextureView implements Closeable {
                     break;
             }
 
-            int result;
+            int displayOrientation;
+            int pictureRotation;
             if (cameraInfos.isFaceFront()) {
-                result = (cameraInfos.info.orientation + degrees) % 360;
-                result = (360 - result) % 360;
+                displayOrientation = (cameraInfos.info.orientation + degrees) % 360;
+                displayOrientation = (360 - displayOrientation) % 360;
+                pictureRotation = (cameraInfos.info.orientation - degrees + 360) % 360;
             } else {
-                result = (cameraInfos.info.orientation - degrees + 360) % 360;
+                displayOrientation = (cameraInfos.info.orientation - degrees + 360) % 360;
+                pictureRotation = (cameraInfos.info.orientation + degrees) % 360;
             }
 
-            return result;
+            this.displayOrientation = displayOrientation;
+            this.pictureRotation = pictureRotation;
         }
     }
 
@@ -237,7 +242,7 @@ public class CameraPreview extends TextureView implements Closeable {
                 return null;
             }
 
-            cameraSettings.displayOrientation = cameraSettings.calculateDisplayOrientation();
+            cameraSettings.calculateDisplayOrientationAndRotation();
             return cameraSettings;
         } catch (Throwable e) {
             e.printStackTrace();
