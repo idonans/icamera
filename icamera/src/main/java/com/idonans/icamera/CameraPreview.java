@@ -35,9 +35,7 @@ public class CameraPreview extends TextureView implements Closeable {
         public static final int ASPECT_AUTO = 0;
         public static final int ASPECT_1x1 = 1;
         public static final int ASPECT_4x3 = 2;
-        public static final int ASPECT_3x4 = 3;
-        public static final int ASPECT_16x9 = 4;
-        public static final int ASPECT_9x16 = 5;
+        public static final int ASPECT_16x9 = 3;
 
         private int[] mAspects = new int[]{ASPECT_AUTO};
         private boolean mUseFront = false;
@@ -83,19 +81,52 @@ public class CameraPreview extends TextureView implements Closeable {
 
         public CameraInfos cameraInfos;
 
-        public void apply(Camera.Parameters parameters) {
+        public int displayOrientation;
+
+        public void apply(Camera.Parameters parameters, Camera camera) {
             if (!TextUtils.isEmpty(flashMode)) {
                 parameters.setFlashMode(flashMode);
             }
 
             parameters.setPreviewSize(mBestSize.previewSize.width, mBestSize.previewSize.height);
             parameters.setPictureSize(mBestSize.pictureSize.width, mBestSize.pictureSize.height);
+
+            camera.setDisplayOrientation(displayOrientation);
         }
 
+        private int calculateDisplayOrientation() {
+            WindowManager windowManager = (WindowManager) AppContext.getContext().getSystemService(Context.WINDOW_SERVICE);
+            int rotation = windowManager.getDefaultDisplay().getRotation();
+            int degrees = 0;
+            switch (rotation) {
+                case Surface.ROTATION_0:
+                    degrees = 0;
+                    break;
+                case Surface.ROTATION_90:
+                    degrees = 90;
+                    break;
+                case Surface.ROTATION_180:
+                    degrees = 180;
+                    break;
+                case Surface.ROTATION_270:
+                    degrees = 270;
+                    break;
+            }
+
+            int result;
+            if (cameraInfos.isFaceFront()) {
+                result = (cameraInfos.info.orientation + degrees) % 360;
+                result = (360 - result) % 360;
+            } else {
+                result = (cameraInfos.info.orientation - degrees + 360) % 360;
+            }
+
+            return result;
+        }
     }
 
-    private Params mParams;
-    private CameraSettings mCameraSettings;
+    private final Params mParams;
+    private final CameraSettings mCameraSettings;
     private Camera mCamera;
 
     public CameraPreview(Context context, @NonNull Params params) {
@@ -190,6 +221,7 @@ public class CameraPreview extends TextureView implements Closeable {
                 return null;
             }
 
+            cameraSettings.displayOrientation = cameraSettings.calculateDisplayOrientation();
             return cameraSettings;
         } catch (Throwable e) {
             e.printStackTrace();
@@ -256,19 +288,6 @@ public class CameraPreview extends TextureView implements Closeable {
                 }
                 return findBestSize(bestSizes);
             }
-            case Params.ASPECT_3x4: {
-                List<BestSize> bestSizes = new ArrayList<>();
-                for (Camera.Size s1 : previewSizes) {
-                    if (isSameAspect(s1, 3, 4)) {
-                        for (Camera.Size s2 : pictureSizes) {
-                            if (isSameAspect(s1, s2)) {
-                                bestSizes.add(new BestSize(s1, s2));
-                            }
-                        }
-                    }
-                }
-                return findBestSize(bestSizes);
-            }
             case Params.ASPECT_4x3: {
                 List<BestSize> bestSizes = new ArrayList<>();
                 for (Camera.Size s1 : previewSizes) {
@@ -286,19 +305,6 @@ public class CameraPreview extends TextureView implements Closeable {
                 List<BestSize> bestSizes = new ArrayList<>();
                 for (Camera.Size s1 : previewSizes) {
                     if (isSameAspect(s1, 16, 9)) {
-                        for (Camera.Size s2 : pictureSizes) {
-                            if (isSameAspect(s1, s2)) {
-                                bestSizes.add(new BestSize(s1, s2));
-                            }
-                        }
-                    }
-                }
-                return findBestSize(bestSizes);
-            }
-            case Params.ASPECT_9x16: {
-                List<BestSize> bestSizes = new ArrayList<>();
-                for (Camera.Size s1 : previewSizes) {
-                    if (isSameAspect(s1, 9, 16)) {
                         for (Camera.Size s2 : pictureSizes) {
                             if (isSameAspect(s1, s2)) {
                                 bestSizes.add(new BestSize(s1, s2));
@@ -392,7 +398,7 @@ public class CameraPreview extends TextureView implements Closeable {
         try {
             camera = Camera.open(cameraSettings.cameraInfos.id);
             Camera.Parameters parameters = camera.getParameters();
-            cameraSettings.apply(parameters);
+            cameraSettings.apply(parameters, camera);
             camera.setParameters(parameters);
             camera.setPreviewTexture(texture);
             camera.startPreview();
@@ -421,8 +427,9 @@ public class CameraPreview extends TextureView implements Closeable {
                 return;
             }
 
-            int aspectWidth = mCameraSettings.mBestSize.previewSize.width;
-            int aspectHeight = mCameraSettings.mBestSize.previewSize.height;
+            // 此处仅处理手机竖屏情况
+            int aspectWidth = mCameraSettings.mBestSize.previewSize.height;
+            int aspectHeight = mCameraSettings.mBestSize.previewSize.width;
 
             if (width * aspectHeight < height * aspectWidth) {
                 // 压缩高度
@@ -438,41 +445,6 @@ public class CameraPreview extends TextureView implements Closeable {
         } finally {
             CommonLog.d(TAG + " onMeasure measured size " + getMeasuredWidth() + ", " + getMeasuredHeight());
         }
-    }
-
-    public void adjustDisplayOrientation() {
-        if (mCamera == null) {
-            CommonLog.d(TAG + " adjustDisplayOrientation, but camera is null");
-            return;
-        }
-
-        WindowManager windowManager = (WindowManager) AppContext.getContext().getSystemService(Context.WINDOW_SERVICE);
-        int rotation = windowManager.getDefaultDisplay().getRotation();
-        int degrees = 0;
-        switch (rotation) {
-            case Surface.ROTATION_0:
-                degrees = 0;
-                break;
-            case Surface.ROTATION_90:
-                degrees = 90;
-                break;
-            case Surface.ROTATION_180:
-                degrees = 180;
-                break;
-            case Surface.ROTATION_270:
-                degrees = 270;
-                break;
-        }
-
-        int result;
-        if (mCameraSettings.cameraInfos.isFaceFront()) {
-            result = (mCameraSettings.cameraInfos.info.orientation + degrees) % 360;
-            result = (360 - result) % 360;
-        } else {
-            result = (mCameraSettings.cameraInfos.info.orientation - degrees + 360) % 360;
-        }
-
-        mCamera.setDisplayOrientation(result);
     }
 
     private void changeToSize(SurfaceTexture surface, int width, int height) {
