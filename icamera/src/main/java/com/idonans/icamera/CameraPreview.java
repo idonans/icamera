@@ -107,6 +107,7 @@ public class CameraPreview extends TextureView implements Closeable {
 
             parameters.setPreviewSize(mBestSize.previewSize.width, mBestSize.previewSize.height);
             parameters.setPictureSize(mBestSize.pictureSize.width, mBestSize.pictureSize.height);
+            parameters.setRotation(displayOrientation);
 
             camera.setDisplayOrientation(displayOrientation);
         }
