@@ -39,7 +39,6 @@ public class CameraPreview extends TextureView implements Closeable {
 
         private int[] mAspects = new int[]{ASPECT_AUTO};
         private boolean mUseFront = false;
-        private boolean mCanSwitch = true;
 
         /**
          * 设置拍照比例, 可以设置多个, 会选取第一个可用的
@@ -51,21 +50,12 @@ public class CameraPreview extends TextureView implements Closeable {
         }
 
         /**
-         * 是否默认使用前置摄像头
+         * 是否使用前置摄像头
          *
          * @param useFront
          */
         public void setUseFront(boolean useFront) {
             mUseFront = useFront;
-        }
-
-        /**
-         * 是否可以切换摄像头
-         *
-         * @param canSwitch
-         */
-        public void setCanSwitch(boolean canSwitch) {
-            mCanSwitch = canSwitch;
         }
 
     }
