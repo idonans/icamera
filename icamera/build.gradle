@@ -36,7 +36,7 @@ version = autoVersionName
 
 android {
     compileSdkVersion 24
-    buildToolsVersion "24.0.0"
+    buildToolsVersion "24.0.1"
 
     defaultConfig {
         minSdkVersion 16
@@ -55,7 +55,7 @@ android {
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     testCompile 'junit:junit:4.12'
-    compile "com.idonans.acommon:acommon:0.6.17"
+    compile 'com.idonans.acommon:acommon:0.6.29'
 }
 
 def siteUrl = 'https://github.com/idonans/icamera'
