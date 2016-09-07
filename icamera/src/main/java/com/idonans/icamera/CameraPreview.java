@@ -76,6 +76,7 @@ public class CameraPreview extends TextureView implements Closeable {
     private static class CameraSettings {
 
         public String flashMode;
+        public String focusMode;
 
         public BestSize mBestSize;
 
@@ -86,6 +87,10 @@ public class CameraPreview extends TextureView implements Closeable {
         public void apply(Camera.Parameters parameters, Camera camera) {
             if (!TextUtils.isEmpty(flashMode)) {
                 parameters.setFlashMode(flashMode);
+            }
+
+            if (!TextUtils.isEmpty(focusMode)) {
+                parameters.setFocusMode(focusMode);
             }
 
             parameters.setPreviewSize(mBestSize.previewSize.width, mBestSize.previewSize.height);
@@ -201,6 +206,15 @@ public class CameraPreview extends TextureView implements Closeable {
                 // 支持自动闪光灯
                 if (supportedFlashModes.contains(Camera.Parameters.FLASH_MODE_AUTO)) {
                     cameraSettings.flashMode = Camera.Parameters.FLASH_MODE_AUTO;
+                }
+            }
+
+            // 对焦方式
+            List<String> supportedFocusModes = parameters.getSupportedFocusModes();
+            if (supportedFocusModes != null) {
+                if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                    // 支持自动对焦
+                    cameraSettings.focusMode = Camera.Parameters.FOCUS_MODE_AUTO;
                 }
             }
 
