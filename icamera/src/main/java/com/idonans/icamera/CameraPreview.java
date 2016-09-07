@@ -65,6 +65,8 @@ public class CameraPreview extends TextureView implements Closeable {
      */
     private static class CameraSettings {
 
+        private static final String TAG = "CameraSettings";
+
         public String flashMode;
         public String focusMode;
 
@@ -101,6 +103,8 @@ public class CameraPreview extends TextureView implements Closeable {
             parameters.setRotation(pictureRotation);
 
             camera.setDisplayOrientation(displayOrientation);
+
+            CommonLog.d(TAG + " apply \n" + toStringShort());
         }
 
         private void calculateDisplayOrientationAndRotation() {
@@ -136,6 +140,20 @@ public class CameraPreview extends TextureView implements Closeable {
             this.displayOrientation = displayOrientation;
             this.pictureRotation = pictureRotation;
         }
+
+        public String toStringShort() {
+            StringBuilder builder = new StringBuilder();
+            builder.append(TAG + "--start\n");
+            builder.append("flashMode " + flashMode + "\n");
+            builder.append("focusMode " + focusMode + "\n");
+            builder.append("displayOrientation " + displayOrientation + "\n");
+            builder.append("pictureRotation " + pictureRotation + "\n");
+            builder.append("preview size " + mBestSize.previewSize.width + ", " + mBestSize.previewSize.height + "\n");
+            builder.append("picture size " + mBestSize.pictureSize.width + ", " + mBestSize.pictureSize.height + "\n");
+            builder.append(TAG + "--end\n");
+            return builder.toString();
+        }
+
     }
 
     private final Params mParams;
