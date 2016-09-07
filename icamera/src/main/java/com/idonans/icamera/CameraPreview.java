@@ -399,9 +399,8 @@ public class CameraPreview extends TextureView implements Closeable {
             return camera;
         } catch (Throwable e) {
             e.printStackTrace();
-        } finally {
-            releaseCamera(camera);
         }
+        releaseCamera(camera);
         return null;
     }
 
