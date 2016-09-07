@@ -25,6 +25,16 @@ public class BuildConfigAdapterImpl implements App.BuildConfigAdapter {
     }
 
     @Override
+    public String getPublicSubDirName() {
+        return "icamera";
+    }
+
+    @Override
+    public String getChannel() {
+        return "idonans";
+    }
+
+    @Override
     public int getLogLevel() {
         return Log.DEBUG;
     }

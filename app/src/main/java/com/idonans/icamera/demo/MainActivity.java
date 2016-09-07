@@ -48,8 +48,10 @@ public class MainActivity extends AppCompatActivity {
             mCameraPreview = null;
         }
 
-        mCameraPreview = new CameraPreview(this);
-        mCameraPreview.setUseFaceFront(false);
+        CameraPreview.Params params = new CameraPreview.Params();
+        params.setAspect(new int[]{CameraPreview.Params.ASPECT_3x4});
+
+        mCameraPreview = new CameraPreview(this, params);
         mCameraPreviewPanel.addView(mCameraPreview, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
     }
 
