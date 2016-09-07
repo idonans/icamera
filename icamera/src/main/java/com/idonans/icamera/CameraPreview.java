@@ -503,11 +503,16 @@ public class CameraPreview extends TextureView implements Closeable {
 
         try {
             mPictureTaking = true;
-            mCamera.takePicture(null, null, new Camera.PictureCallback() {
+            mCamera.autoFocus(new Camera.AutoFocusCallback() {
                 @Override
-                public void onPictureTaken(byte[] data, Camera camera) {
-                    resumeCameraPreviewAfterTakePicture();
-                    callback.onPictureTaken(data, camera);
+                public void onAutoFocus(boolean success, Camera camera) {
+                    mCamera.takePicture(null, null, new Camera.PictureCallback() {
+                        @Override
+                        public void onPictureTaken(byte[] data, Camera camera) {
+                            resumeCameraPreviewAfterTakePicture();
+                            callback.onPictureTaken(data, camera);
+                        }
+                    });
                 }
             });
             return true;
