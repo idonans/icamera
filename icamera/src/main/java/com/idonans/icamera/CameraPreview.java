@@ -1,6 +1,9 @@
 package com.idonans.icamera;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.support.annotation.CheckResult;
@@ -13,9 +16,11 @@ import android.widget.Toast;
 
 import com.idonans.acommon.AppContext;
 import com.idonans.acommon.lang.CommonLog;
+import com.idonans.acommon.lang.ThreadPool;
 import com.idonans.acommon.lang.Threads;
 import com.idonans.acommon.util.IOUtil;
 
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -534,8 +539,7 @@ public class CameraPreview extends TextureView implements Closeable {
                     mCamera.takePicture(null, null, new Camera.PictureCallback() {
                         @Override
                         public void onPictureTaken(byte[] data, Camera camera) {
-                            resumeCameraPreviewAfterTakePicture();
-                            callback.onPictureTaken(data, camera);
+                            rotationPictureAsync(data, callback);
                         }
                     });
                 }
@@ -548,9 +552,65 @@ public class CameraPreview extends TextureView implements Closeable {
         }
     }
 
+    private void rotationPictureAsync(final byte[] data, final Camera.PictureCallback callback) {
+        if (mCameraSettings == null || mCamera == null) {
+            return;
+        }
+
+        if (!mCameraSettings.cameraInfos.isFaceFront()) {
+            // 后置摄像头不需要旋转
+            resumeCameraPreviewAfterTakePicture();
+            callback.onPictureTaken(data, mCamera);
+            return;
+        }
+
+        // 前置摄像头需要对称旋转图像
+        ThreadPool.getInstance().post(new Runnable() {
+            @Override
+            public void run() {
+                ByteArrayOutputStream baos = null;
+                try {
+                    BitmapFactory.Options options = new BitmapFactory.Options();
+                    options.inPreferredConfig = Bitmap.Config.RGB_565;
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, options);
+
+                    Matrix matrix = new Matrix();
+                    matrix.postScale(-1, 1); // 镜像水平翻转
+                    Bitmap convertBmp = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                    baos = new ByteArrayOutputStream();
+                    if (convertBmp.compress(Bitmap.CompressFormat.JPEG, 100, baos)) {
+                        final byte[] convertData = baos.toByteArray();
+                        Threads.runOnUi(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (mCamera != null) {
+                                    callback.onPictureTaken(convertData, mCamera);
+                                }
+                            }
+                        });
+                    } else {
+                        throw new IllegalAccessException("fail to compress bitmap");
+                    }
+                } catch (Throwable e) {
+                    e.printStackTrace();
+                } finally {
+                    IOUtil.closeQuietly(baos);
+                    Threads.runOnUi(new Runnable() {
+                        @Override
+                        public void run() {
+                            resumeCameraPreviewAfterTakePicture();
+                        }
+                    });
+                }
+            }
+        });
+    }
+
     private void resumeCameraPreviewAfterTakePicture() {
         try {
-            mCamera.startPreview();
+            if (mCamera != null) {
+                mCamera.startPreview();
+            }
         } catch (Throwable e) {
             e.printStackTrace();
         }
