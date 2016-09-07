@@ -93,8 +93,7 @@ public class CameraPreview extends TextureView implements Closeable {
         }
 
         private boolean canAutoFocus() {
-            return Camera.Parameters.FOCUS_MODE_AUTO.equals(focusMode)
-                    || Camera.Parameters.FOCUS_MODE_MACRO.equals(focusMode);
+            return Camera.Parameters.FOCUS_MODE_AUTO.equals(focusMode);
         }
 
         public void apply(Camera.Parameters parameters, Camera camera) {
@@ -225,13 +224,7 @@ public class CameraPreview extends TextureView implements Closeable {
             // 对焦方式
             List<String> supportedFocusModes = parameters.getSupportedFocusModes();
             if (supportedFocusModes != null) {
-                if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_INFINITY)) {
-                    cameraSettings.focusMode = Camera.Parameters.FOCUS_MODE_INFINITY;
-                } else if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_FIXED)) {
-                    cameraSettings.focusMode = Camera.Parameters.FOCUS_MODE_FIXED;
-                } else if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_MACRO)) {
-                    cameraSettings.focusMode = Camera.Parameters.FOCUS_MODE_MACRO;
-                } else if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+                if (supportedFocusModes.contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
                     cameraSettings.focusMode = Camera.Parameters.FOCUS_MODE_AUTO;
                 }
             }
