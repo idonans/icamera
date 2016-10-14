@@ -557,14 +557,8 @@ public class CameraPreview extends TextureView implements Closeable {
             return;
         }
 
-        if (!mCameraSettings.cameraInfos.isFaceFront()) {
-            // 后置摄像头不需要旋转
-            resumeCameraPreviewAfterTakePicture();
-            callback.onPictureTaken(data, mCamera);
-            return;
-        }
-
-        // 前置摄像头需要对称旋转图像
+        // 是否是前置摄像头
+        final boolean isFaceFront = mCameraSettings.cameraInfos.isFaceFront();
         ThreadPool.getInstance().post(new Runnable() {
             @Override
             public void run() {
@@ -575,7 +569,18 @@ public class CameraPreview extends TextureView implements Closeable {
                     Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length, options);
 
                     Matrix matrix = new Matrix();
-                    matrix.postScale(-1, 1); // 镜像水平翻转
+
+                    // 处理旋转信息
+                    int rotation = ExifUtil.getRotation(data);
+                    if (rotation > 0) {
+                        matrix.postRotate(rotation);
+                    }
+
+                    // 前置摄像头需要镜像水平翻转
+                    if (isFaceFront) {
+                        matrix.postScale(-1, 1);
+                    }
+
                     Bitmap convertBmp = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
                     baos = new ByteArrayOutputStream();
                     if (convertBmp.compress(Bitmap.CompressFormat.JPEG, 100, baos)) {
