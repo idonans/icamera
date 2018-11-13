@@ -1,2 +1,3 @@
-# icamera
+# *Deprecated*
+# ~~icamera~~
 android camera module
